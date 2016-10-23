@@ -9,13 +9,13 @@ public class RaceCar {
 
     private RaceTrackSim raceTrackSimulator;
 
-    private final int MIN_VX = -5;
-    private final int MAX_VX = 5;
-    private final int MIN_VY = -5;
-    private final int MAX_VY = 5;
+    private final int MIN_VX = -4;
+    private final int MAX_VX = 4;
+    private final int MIN_VY = -4;
+    private final int MAX_VY = 4;
 
-    private double epsilon = 1;
-    private double learningRate = 0.0001;
+    private double epsilon = 0.05;
+    private double learningRate = 0.0001;//0.01;
     private double gamma = 1.0;
 
     private Random random;
@@ -23,28 +23,48 @@ public class RaceCar {
     private final int MIN_ACTION = -1;
     private final int MAX_ACTION = 1;
 
+    private int maxX = 100;
+    private int maxY = 100;
+
     /**
      *  The complete set of actions with their corresponding weight vectors.
      */
     private double[][][] actionWeightPairs =
             {     /** Action    WeightVector*/
-                    {{-1,-1},   {0,0,0,0,0,0,0,0,0}},
-                    {{-1,0},    {0,0,0,0,0,0,0,0,0}},
-                    {{-1,1},    {0,0,0,0,0,0,0,0,0}},
-                    {{0,-1},    {0,0,0,0,0,0,0,0,0}},
-                    {{0,0},     {0,0,0,0,0,0,0,0,0}},
-                    {{0,1},     {0,0,0,0,0,0,0,0,0}},
-                    {{1,-1},    {0,0,0,0,0,0,0,0,0}},
-                    {{1,0},     {0,0,0,0,0,0,0,0,0}},
-                    {{1,1},     {0,0,0,0,0,0,0,0,0}},
+                    {{-1,-1},   {0,0,0,0,0,0,0}},
+                    {{-1,0},    {0,0,0,0,0,0,0}},
+                    {{-1,1},    {0,0,0,0,0,0,0}},
+                    {{0,-1},    {0,0,0,0,0,0,0}},
+                    {{0,0},     {0,0,0,0,0,0,0}},
+                    {{0,1},     {0,0,0,0,0,0,0}},
+                    {{1,-1},    {0,0,0,0,0,0,0}},
+                    {{1,0},     {0,0,0,0,0,0,0}},
+                    {{1,1},     {0,0,0,0,0,0,0}},
             };
 
+    /** Tiling stuff*/
+    private final double minVelocity = -6;
+    private double[][] xTilesWeights;
+    private double[][] yTilesWeights;
+    private double[][] vxTilesWeights;
+    private double[][] vyTilesWeights;
+    private double[][] speedTilesWeights;
+
+    private int j = 0;
     /**
      *  Constructor
      */
     public RaceCar() {
         raceTrackSimulator = new RaceTrackSim();
         random = new Random();
+
+        // Create weights for every tile
+        xTilesWeights = new double[100][9];
+        yTilesWeights = new double[100][9];
+        vxTilesWeights = new double[13][9];
+        vyTilesWeights = new double[13][9];
+
+        j = 0;
     }
 
     /**
@@ -52,7 +72,6 @@ public class RaceCar {
      */
     public void qLearn() {
         int i = 0;
-        int j = 0;
         int numCrashes = 0;
         int crashOneInRow = 0;
         double[] state = null;
@@ -60,24 +79,26 @@ public class RaceCar {
             j++;
             long sleepTime = 1000;
             long sleepEnd;
-            epsilon =  epsilon > 0 ? epsilon - 0.001 : 0;
+            epsilon = j >= 400000 ? 0 : epsilon;
+            //epsilon =  epsilon > 0 ? epsilon - 0.001 : 0;
            //if(i == 1)
            //    System.out.println("state: " + "(" + state[0] + ", " + state[1] + ", " + state[2] + ", " + state[3] + ")");
             state = raceTrackSimulator.startEpisode();
-            //sleepEnd = System.currentTimeMillis() + sleepTime;
-            //while(System.currentTimeMillis() < sleepEnd );
+
+
             System.out.println("\n" + j + " " + i);
             System.out.println("epsilon: " + epsilon);
-            if(i != 0 && numCrashes == 0)
-                crashOneInRow++;
-            else
-                crashOneInRow = 0;
-
-            if(crashOneInRow == 1 && epsilon == 0)
-                break;
+            //if(i != 0 && numCrashes == 1)
+            //    crashOneInRow++;
+            //else
+            //    crashOneInRow = 0;
+//
+            //if(crashOneInRow == 500)
+            //    break;
             i = 0;
             numCrashes = 0;
             //printWeights();
+            //printTileWeights();
             while(state[5] != 1.0D) {
                 i++;
                 double[] action = pickPolicyAction(state[0],state[1],state[2], state[3]);
@@ -89,13 +110,20 @@ public class RaceCar {
                 double[] environmentResponse = raceTrackSimulator.simulate(stateActionPair);
 
                 if(environmentResponse[4] == -5.0D) {
+                    if(j >= 400000) {
+                        //printTileWeights();
+                        //System.out.println("action: (" + action[0] + ", " + action[1] + ")" );
+                    }
                     System.out.println("CRASH!");
                     numCrashes++;
                 }
                 else if(environmentResponse[5] == 1.0D && environmentResponse[4] == -1.0D)
                     System.out.println("FINISH!");
 
-                updateQValue(stateActionPair, environmentResponse);
+                if(j < 400000)
+                    updateQValue(stateActionPair, environmentResponse);
+                //sleepEnd = System.currentTimeMillis() + sleepTime;
+                //while(System.currentTimeMillis() < sleepEnd );
                 state = environmentResponse;
             }
         }
@@ -137,20 +165,25 @@ public class RaceCar {
         //System.out.println("weights: (" + weights[0] + "," + weights[1] + "," + weights[2] + "," + weights[3] + "," + weights[4] + ")");
 
         targetValue = environmentResponse[4] + gamma * maxQValueStatePrime;
-        double diff = targetValue - qValue;
+        double error = targetValue - qValue;
         double[] featureVector = getFeatureVector(stateAction);
 
         for(int i = 0; i < weights.length; i++) {
-            double delta = learningRate * diff * featureVector[i];
+            double delta = learningRate * error * featureVector[i];
             weights[i] += delta;
             //System.out.println("weight[" + i + "] = " + weights[i] + " change: " + delta);
         }
+
+        updateWeights(new double[] {stateAction[4], stateAction[5]}, weights);
+
 
         //System.out.println("weightsAfter: (" + weights[0] + "," + weights[1] + "," + weights[2] + "," + weights[3] + "," + weights[4] + ")");
         //System.out.println("QValueAfter: " + q(stateAction[0],stateAction[1],stateAction[2],stateAction[3], new double[] {stateAction[4],stateAction[5]}));
         //System.out.println();
 
-        updateWeights(new double[] {stateAction[4], stateAction[5]}, weights);
+        //targetValue = environmentResponse[4] + gamma * maxQValueStatePrime;
+        //double error = targetValue - qValue;
+        //updateTileWeights(stateAction[0],stateAction[1],stateAction[2],stateAction[3], new double[] {stateAction[4],stateAction[5]}, error);
     }
 
     /**
@@ -177,6 +210,7 @@ public class RaceCar {
     }
 
     /**
+     * Gets the Q value of a state action pair.
      *
      * @param x The x coordinate of the car.
      * @param y The y coordinate of the car.
@@ -229,12 +263,16 @@ public class RaceCar {
 
         for(double[] action : viableActions) {
             double qValue = q(x,y,v_x,v_y,action);
-
             if(qValue >= maxQValue) {
                 maxQValue = qValue;
                 maxAction = action;
             }
         }
+
+        //if(j >= 400000) {
+        //    System.out.println("qVal: " + maxQValue);
+        //    System.out.println("action: (" + maxAction[0] + "," + maxAction[1] + ")");
+        //}
 
         return maxAction;
     }
@@ -246,6 +284,8 @@ public class RaceCar {
      * @return The random action from the list.
      */
     private double[] randomAction(List<double[]> viableActions) {
+        if(j >= 400000)
+            System.out.println("Random");
         int randomIndex = random.nextInt(viableActions.size());
         return viableActions.get(randomIndex);
     }
@@ -294,10 +334,13 @@ public class RaceCar {
      * @return The feature vector of the state.
      */
     private double[] getFeatureVector(double[] state) {
-        return new double[] {1.0D, state[0], state[1], state[2], state[3], Math.sqrt(Math.pow(state[2], 2) + Math.pow(state[3], 2)), state[0] * state[1],
-        state[0] * state[0], state[1] * state[1]};
+        return new double[] {1.0D, state[0], state[1], state[2], state[3], Math.sqrt(Math.pow(state[2], 2) + Math.pow(state[3], 2)),
+                state[0] * state[1]};
     }
 
+    /**
+     * Prints all weights of actions.
+     */
     private void printWeights() {
         //System.out.println();
         for(double[][] pair : actionWeightPairs) {
@@ -307,6 +350,79 @@ public class RaceCar {
                 System.out.print( weight + ", ");
             System.out.println(" )");
         }
+        System.out.println();
+    }
+
+
+    /**
+     * Gets the Q vlaue of an state action pair
+     * via tiling method.
+     *
+     * @param x The x coordinate of the car.
+     * @param y The y coordinate of the car.
+     * @param v_x The x velocity of the car.
+     * @param v_y The y velocity of the car.
+     * @param action The action being taken in the state.
+     * @return The q value for the state action pair.
+     */
+    private double getQValue(double x, double y, double v_x, double v_y, double[] action) {
+        int actionIndex = getActionIndex(action);
+        return xTilesWeights[(int)Math.floor(x)][actionIndex] + yTilesWeights[(int)Math.floor(y)][actionIndex]
+                + vxTilesWeights[(int)Math.floor(v_x - minVelocity)][actionIndex]
+                + vyTilesWeights[(int)Math.floor(v_y - minVelocity)][actionIndex];
+    }
+
+
+    /**
+     * Updates the weights of tiles
+     * according to error.
+     *
+     * @param x The x coordinate of the car.
+     * @param y The y coordinate of the car.
+     * @param v_x The x velocity of the car.
+     * @param v_y The y velocity of the car.
+     * @param action The action being taken in the state.
+     * @param error The error between current q value
+     *              and observed q value.
+     */
+    private void updateTileWeights(double x, double y, double v_x, double v_y, double[] action, double error) {
+        int actionIndex = getActionIndex(action);
+
+        double dividedLearningRate = learningRate/4;
+
+        xTilesWeights[(int)Math.floor(x)][actionIndex] += dividedLearningRate * error;
+        yTilesWeights[(int)Math.floor(y)][actionIndex] += dividedLearningRate * error;
+        vxTilesWeights[(int)Math.floor(v_x - minVelocity)][actionIndex] += dividedLearningRate * error;
+        vyTilesWeights[(int)Math.floor(v_y - minVelocity)][actionIndex] += dividedLearningRate * error;
+    }
+
+    /**
+     * Prints tile weights.
+     */
+    private void printTileWeights() {
+        System.out.print("{ ");
+        for(double weights[] : xTilesWeights) {
+            System.out.print(weights[7] + " ");
+        }
+        System.out.println("}");
+
+        System.out.print("{ ");
+        for(double weights[] : yTilesWeights) {
+            System.out.print(weights[7] + " ");
+        }
+        System.out.println("}");
+
+        System.out.print("{ ");
+        for(double weights[] : vxTilesWeights) {
+            System.out.print(weights[7] + " ");
+        }
+        System.out.println("}");
+
+        System.out.print("{ ");
+        for(double weights[] : vyTilesWeights) {
+            System.out.print(weights[7] + " ");
+        }
+        System.out.println("}");
         System.out.println();
     }
 }
