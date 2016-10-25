@@ -5,5 +5,9 @@ public class Test {
     public static void main(String args[]) {
         RaceCar raceCar = new RaceCar();
         raceCar.qLearn();
+
+        for(int i = 0; i < 2000; i++) {
+            raceCar.drive();
+        }
     }
 }
