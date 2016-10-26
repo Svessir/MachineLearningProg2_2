@@ -6,7 +6,9 @@ import java.util.Random;
  * Created by Sverrir on 20.10.2016.
  */
 public class RaceCar {
-
+    /****************************
+     * First: epsilon : 0.2; learningRate: 0.00001;
+     ****************************/
     private RaceTrackSim raceTrackSimulator;
 
     private final int MIN_VX = -4;
@@ -50,7 +52,9 @@ public class RaceCar {
     private double[][] vyTilesWeights;
     private double[][] speedTilesWeights;
 
-    private int j = 0;
+    /** Circles */
+    private double[][][] circles;
+
     /**
      *  Constructor
      */
@@ -68,7 +72,7 @@ public class RaceCar {
         vyTilesWeights = new double[13][9];
         speedTilesWeights = new double[maxSpeedLength][9];
 
-        j = 0;
+        circles = new double[100][100][9];
     }
 
     /**
@@ -80,15 +84,18 @@ public class RaceCar {
         int crashThreshold = 5;
         int numberOfEpisodesLowerThanCrashThreshold = 0;
         int numberOfCrashes = Integer.MAX_VALUE;
-        int maxNumberOfCrashes=0;
-        while(numberOfEpisodesLowerThanCrashThreshold < 100 && i < 10000000) {
+        int maxNumberOfCrashes = 0;
+        int maxNumberOfInARow = 0;
+        while(numberOfEpisodesLowerThanCrashThreshold < 50 && i < 10000000) {
             numberOfEpisodesLowerThanCrashThreshold = numberOfCrashes < crashThreshold ? numberOfEpisodesLowerThanCrashThreshold + 1: 0;
+            maxNumberOfInARow = numberOfEpisodesLowerThanCrashThreshold > maxNumberOfInARow ? numberOfEpisodesLowerThanCrashThreshold : maxNumberOfInARow;
             i++;
             maxNumberOfCrashes = numberOfCrashes > maxNumberOfCrashes ? numberOfCrashes : maxNumberOfCrashes;
             if(i % 10000 == 0) {
-                System.out.println(i + " numberOfEpisodesLowerThanCrashThreshold : " + numberOfEpisodesLowerThanCrashThreshold
+                System.out.println(i + " numberOfEpisodesLowerThanCrashThreshold : " + maxNumberOfInARow
                                     + " numberOfCrashes: " + maxNumberOfCrashes);
                 maxNumberOfCrashes = 0;
+                maxNumberOfInARow = 0;
             }
             numberOfCrashes = 0;
 
@@ -99,11 +106,6 @@ public class RaceCar {
 
                 double[] stateActionPair = new double[] {state[0], state[1], state[2], state[3], action[0], action[1]};
                 double[] environmentResponse = raceTrackSimulator.simulate(stateActionPair);
-
-                //if(environmentResponse[4] == -5.0D)
-                //    System.out.println("CRASH");
-                //if(environmentResponse[5] == 1.0D)
-                //    System.out.println("FINISH");
 
                 numberOfCrashes += environmentResponse[4] == -5.0D ? 1 : 0;
 
@@ -117,7 +119,9 @@ public class RaceCar {
         double[] state = raceTrackSimulator.startEpisode();
         double oldEpsilon = epsilon;
         epsilon = 0;
+        int i = 0;
         do {
+            i++;
             double[] action = pickPolicyAction(state[0],state[1],state[2], state[3]);
 
             double[] stateActionPair = new double[] {state[0], state[1], state[2], state[3], action[0], action[1]};
@@ -128,7 +132,7 @@ public class RaceCar {
 
             state = environmentResponse;
         } while(state[5] != 1.0D);
-        System.out.println("FINISH\n");
+        System.out.println("FINISH " + i + "\n");
         epsilon = oldEpsilon;
     }
 
@@ -352,8 +356,8 @@ public class RaceCar {
         int speedIndex = (int)Math.floor(Math.sqrt(Math.pow(v_x, 2) + Math.pow(v_y, 2)));
         return xTilesWeights[(int)Math.floor(x)][actionIndex] + yTilesWeights[(int)Math.floor(y)][actionIndex]
                 + vxTilesWeights[(int)Math.floor(v_x - minVelocity)][actionIndex]
-                + vyTilesWeights[(int)Math.floor(v_y - minVelocity)][actionIndex]
-                + speedTilesWeights[speedIndex][actionIndex];
+                + vyTilesWeights[(int)Math.floor(v_y - minVelocity)][actionIndex];
+                //+ speedTilesWeights[speedIndex][actionIndex];
     }
 
 

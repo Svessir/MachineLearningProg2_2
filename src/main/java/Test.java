@@ -6,7 +6,7 @@ public class Test {
         RaceCar raceCar = new RaceCar();
         raceCar.qLearn();
 
-        for(int i = 0; i < 2000; i++) {
+        for(int i = 0; i < 10000; i++) {
             raceCar.drive();
         }
     }
