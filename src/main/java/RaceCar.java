@@ -17,7 +17,7 @@ public class RaceCar {
     private final int MAX_VY = 4;
 
     private double epsilon = 0.2;
-    private double learningRate = 0.00001; //0.00001;
+    private double learningRate = 0.000001; //0.00001;
     private double gamma = 1.0;
 
     private Random random;
@@ -27,6 +27,7 @@ public class RaceCar {
 
     private int maxX = 100;
     private int maxY = 100;
+
 
     /**
      *  The complete set of actions with their corresponding weight vectors.
@@ -52,9 +53,6 @@ public class RaceCar {
     private double[][] vyTilesWeights;
     private double[][] speedTilesWeights;
 
-    /** Circles */
-    private double[][][] circles;
-
     /**
      *  Constructor
      */
@@ -71,15 +69,13 @@ public class RaceCar {
         vxTilesWeights = new double[13][9];
         vyTilesWeights = new double[13][9];
         speedTilesWeights = new double[maxSpeedLength][9];
-
-        circles = new double[100][100][9];
     }
 
     /**
      * Initiate q learning.
      */
     public void qLearn() {
-        double[] state = null;
+        double[] state;
         int i = 0;
         int crashThreshold = 5;
         int numberOfEpisodesLowerThanCrashThreshold = 0;
